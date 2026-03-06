@@ -186,15 +186,15 @@
       <h1 class="title">PONG</h1>
       <p class="subtitle">
         Swipe your finger anywhere on the screen to move your paddle.
-        Works in portrait or landscape mode.
-        First to 7 wins.
+        The paddle now follows only your finger movement, not where you first touch.
+        Works in portrait or landscape mode. First to 7 wins.
       </p>
       <div class="btnRow">
         <button id="startBtn">Start Game</button>
         <button id="soundBtn">Sound: On</button>
       </div>
       <div class="small">
-        Tip: tap Start, then drag your finger up or down anywhere on the screen.
+        Drag up or down anywhere on the screen. Lifting and retouching will not teleport the paddle.
       </div>
     </div>
   </div>
@@ -224,8 +224,8 @@
       paddleWidth: 0,
       paddleHeight: 0,
       ballSize: 0,
-      player: { x: 0, y: 0, speed: 0 },
-      cpu: { x: 0, y: 0, speed: 0 },
+      player: { x: 0, y: 0 },
+      cpu: { x: 0, y: 0 },
       ball: { x: 0, y: 0, vx: 0, vy: 0, speed: 0 },
       flashTimer: 0,
       winner: ""
@@ -256,7 +256,6 @@
       } else {
         game.player.y = clamp(game.player.y, 0, h - game.paddleHeight);
         game.cpu.y = clamp(game.cpu.y, 0, h - game.paddleHeight);
-        game.cpu.x = w - 24 - game.paddleWidth;
       }
     }
 
@@ -425,7 +424,6 @@
 
       game.flashTimer = Math.max(0, game.flashTimer - 0.03);
 
-      const playerCenter = game.player.y + game.paddleHeight / 2;
       const cpuCenter = game.cpu.y + game.paddleHeight / 2;
       const targetY = game.ball.y + game.ballSize / 2;
 
@@ -534,8 +532,8 @@
       requestAnimationFrame(loop);
     }
 
-    function movePlayerTo(centerY) {
-      game.player.y = clamp(centerY - game.paddleHeight / 2, 0, h - game.paddleHeight);
+    function movePlayerBy(deltaY) {
+      game.player.y = clamp(game.player.y + deltaY, 0, h - game.paddleHeight);
     }
 
     function startGame() {
@@ -561,13 +559,13 @@
     function handlePointerStart(y) {
       pointerActive = true;
       lastPointerY = y;
-      movePlayerTo(y);
     }
 
     function handlePointerMove(y) {
       if (!pointerActive) return;
+      const deltaY = y - lastPointerY;
       lastPointerY = y;
-      movePlayerTo(y);
+      movePlayerBy(deltaY);
     }
 
     function handlePointerEnd() {
