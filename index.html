@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Pong vs Computer – Mobile Friendly</title>
+  <title>Pong vs Computer – Mobile Friendly (Fixed Touch)</title>
   <!-- Mobile viewport -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- Retro arcade font -->
@@ -38,6 +38,7 @@
       border: 4px solid #fff;
       border-radius: 8px;
       display: block;
+      touch-action: none;        /* prevent page scrolling while touching */
     }
     #ui {
       margin-top: 1rem;
@@ -159,34 +160,38 @@
     function clearMessage() { messageEl.textContent = ''; }
 
     // -------------------- Input Handling --------------------
-    // Mouse movement (desktop)
+    // ----- Mouse (desktop) -----
     canvas.addEventListener('mousemove', (e) => {
       const rect = canvas.getBoundingClientRect();
-      const mouseY = e.clientY - rect.top;
+      const scaleY = canvas.height / rect.height; // convert CSS pixels → canvas pixels
+      const mouseY = (e.clientY - rect.top) * scaleY;
       player.y = mouseY - player.height / 2;
       clampPlayer();
     });
 
-    // Touch movement (mobile)
+    // ----- Touch (mobile) -----
     let ongoingTouch = null;
     canvas.addEventListener('touchstart', (e) => {
+      e.preventDefault(); // stop page scroll
       if (e.touches.length === 1) {
         ongoingTouch = e.touches[0];
         movePaddleByTouch(ongoingTouch);
       }
-    });
+    }, {passive:false});
     canvas.addEventListener('touchmove', (e) => {
+      e.preventDefault();
       if (ongoingTouch && e.touches.length === 1) {
         ongoingTouch = e.touches[0];
         movePaddleByTouch(ongoingTouch);
       }
-    });
+    }, {passive:false});
     canvas.addEventListener('touchend', () => { ongoingTouch = null; });
     canvas.addEventListener('touchcancel', () => { ongoingTouch = null; });
 
     function movePaddleByTouch(touch) {
       const rect = canvas.getBoundingClientRect();
-      const touchY = touch.clientY - rect.top;
+      const scaleY = canvas.height / rect.height;
+      const touchY = (touch.clientY - rect.top) * scaleY;
       player.y = touchY - player.height / 2;
       clampPlayer();
     }
@@ -196,7 +201,7 @@
       if (player.y + player.height > canvas.height) player.y = canvas.height - player.height;
     }
 
-    // Keyboard fallback (up/down arrows)
+    // ----- Keyboard fallback (up/down arrows) -----
     const keys = {};
     window.addEventListener('keydown', (e) => { keys[e.key] = true; });
     window.addEventListener('keyup', (e) => { keys[e.key] = false; });
@@ -215,7 +220,7 @@
       if (keys['ArrowDown']) player.y += PADDLE_SPEED;
       clampPlayer();
 
-      // Simple AI
+      // Simple AI for computer paddle
       const targetY = ball.y - computer.height / 2;
       if (computer.y < targetY) computer.y += Math.min(AI_SPEED, targetY - computer.y);
       else if (computer.y > targetY) computer.y -= Math.min(AI_SPEED, computer.y - targetY);
@@ -226,7 +231,7 @@
       ball.x += ball.vx;
       ball.y += ball.vy;
 
-      // Top/bottom walls
+      // Top/bottom wall collision
       if (ball.y - ball.radius < 0 || ball.y + ball.radius > canvas.height) ball.vy = -ball.vy;
 
       // Player paddle collision
@@ -235,7 +240,7 @@
         ball.vx = -ball.vx;
         const hitPos = (ball.y - player.y) / player.height - 0.5;
         ball.vy = BALL_SPEED * hitPos * 2;
-        ball.x = player.x + player.width + ball.radius;
+        ball.x = player.x + player.width + ball.radius; // prevent sticking
       }
 
       // Computer paddle collision
@@ -244,7 +249,7 @@
         ball.vx = -ball.vx;
         const hitPos = (ball.y - computer.y) / computer.height - 0.5;
         ball.vy = BALL_SPEED * hitPos * 2;
-        ball.x = computer.x - ball.radius;
+        ball.x = computer.x - ball.radius; // prevent sticking
       }
 
       // Scoring
@@ -262,7 +267,7 @@
         setTimeout(clearMessage, 1500);
       }
 
-      // Draw
+      // Draw everything
       drawRect(player.x, player.y, player.width, player.height, '#fff');
       drawRect(computer.x, computer.y, computer.width, computer.height, '#fff');
       drawCircle(ball.x, ball.y, ball.radius, '#fff');
