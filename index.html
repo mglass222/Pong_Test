@@ -2,11 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Pong vs Computer</title>
-  <!-- Google Font for a retro arcade feel -->
+  <title>Pong vs Computer – Mobile Friendly</title>
+  <!-- Mobile viewport -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Retro arcade font -->
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <style>
-    /* Global styling */
     body {
       margin: 0;
       padding: 0;
@@ -17,26 +18,33 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      height: 100vh;
+      min-height: 100vh;
       overflow: hidden;
     }
     h1 {
-      margin-bottom: 0.5rem;
+      margin: 0.5rem 0;
       font-size: 1.2rem;
+      text-align: center;
     }
     #gameContainer {
       position: relative;
+      width: 100%;
+      max-width: 800px;          /* keep original aspect ratio */
     }
     canvas {
+      width: 100%;               /* responsive width */
+      height: auto;
       background: #111;
       border: 4px solid #fff;
       border-radius: 8px;
+      display: block;
     }
     #ui {
       margin-top: 1rem;
       display: flex;
-      gap: 1rem;
-      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
     }
     button {
       background: #222;
@@ -53,6 +61,7 @@
     }
     #score {
       font-size: 0.9rem;
+      text-align: center;
     }
     #message {
       position: absolute;
@@ -69,7 +78,6 @@
 <body>
   <h1>Pong vs Computer</h1>
   <div id="gameContainer">
-    <!-- Fixed dimensions prevent CLS -->
     <canvas id="pongCanvas" width="800" height="400"></canvas>
     <div id="message"></div>
   </div>
@@ -81,14 +89,17 @@
   </div>
 
   <script>
-    // -------------------- Game Constants --------------------
+    // -------------------- Canvas & Context --------------------
     const canvas = document.getElementById('pongCanvas');
     const ctx = canvas.getContext('2d');
+
+    // -------------------- UI Elements --------------------
     const messageEl = document.getElementById('message');
     const scoreEl = document.getElementById('score');
     const startBtn = document.getElementById('startBtn');
     const pauseBtn = document.getElementById('pauseBtn');
 
+    // -------------------- Game Constants --------------------
     const PADDLE_WIDTH = 10;
     const PADDLE_HEIGHT = 80;
     const BALL_RADIUS = 8;
@@ -96,7 +107,7 @@
     const COMPUTER_X = canvas.width - 30 - PADDLE_WIDTH;
     const PADDLE_SPEED = 6;
     const BALL_SPEED = 5;
-    const AI_SPEED = 4; // max speed of computer paddle
+    const AI_SPEED = 4;
 
     // -------------------- Game State --------------------
     let playerScore = 0;
@@ -108,18 +119,14 @@
       x: PLAYER_X,
       y: (canvas.height - PADDLE_HEIGHT) / 2,
       width: PADDLE_WIDTH,
-      height: PADDLE_HEIGHT,
-      dy: 0
+      height: PADDLE_HEIGHT
     };
-
     const computer = {
       x: COMPUTER_X,
       y: (canvas.height - PADDLE_HEIGHT) / 2,
       width: PADDLE_WIDTH,
-      height: PADDLE_HEIGHT,
-      dy: 0
+      height: PADDLE_HEIGHT
     };
-
     const ball = {
       x: canvas.width / 2,
       y: canvas.height / 2,
@@ -133,44 +140,61 @@
       ctx.fillStyle = color;
       ctx.fillRect(x, y, w, h);
     }
-
     function drawCircle(x, y, r, color) {
       ctx.fillStyle = color;
       ctx.beginPath();
       ctx.arc(x, y, r, 0, Math.PI * 2);
       ctx.fill();
     }
-
     function resetBall(direction = 1) {
       ball.x = canvas.width / 2;
       ball.y = canvas.height / 2;
-      // Randomize vertical speed a bit
       ball.vy = (Math.random() * 2 - 1) * BALL_SPEED;
       ball.vx = direction * BALL_SPEED;
     }
-
     function updateScore() {
       scoreEl.textContent = `Player: ${playerScore} | Computer: ${computerScore}`;
     }
-
-    function showMessage(text) {
-      messageEl.textContent = text;
-    }
-
-    function clearMessage() {
-      messageEl.textContent = '';
-    }
+    function showMessage(text) { messageEl.textContent = text; }
+    function clearMessage() { messageEl.textContent = ''; }
 
     // -------------------- Input Handling --------------------
-    // Mouse movement for player paddle
+    // Mouse movement (desktop)
     canvas.addEventListener('mousemove', (e) => {
       const rect = canvas.getBoundingClientRect();
       const mouseY = e.clientY - rect.top;
       player.y = mouseY - player.height / 2;
-      // Clamp within canvas
+      clampPlayer();
+    });
+
+    // Touch movement (mobile)
+    let ongoingTouch = null;
+    canvas.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        ongoingTouch = e.touches[0];
+        movePaddleByTouch(ongoingTouch);
+      }
+    });
+    canvas.addEventListener('touchmove', (e) => {
+      if (ongoingTouch && e.touches.length === 1) {
+        ongoingTouch = e.touches[0];
+        movePaddleByTouch(ongoingTouch);
+      }
+    });
+    canvas.addEventListener('touchend', () => { ongoingTouch = null; });
+    canvas.addEventListener('touchcancel', () => { ongoingTouch = null; });
+
+    function movePaddleByTouch(touch) {
+      const rect = canvas.getBoundingClientRect();
+      const touchY = touch.clientY - rect.top;
+      player.y = touchY - player.height / 2;
+      clampPlayer();
+    }
+
+    function clampPlayer() {
       if (player.y < 0) player.y = 0;
       if (player.y + player.height > canvas.height) player.y = canvas.height - player.height;
-    });
+    }
 
     // Keyboard fallback (up/down arrows)
     const keys = {};
@@ -184,59 +208,43 @@
         return;
       }
 
-      // Clear canvas
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Move player paddle via keyboard if keys pressed
-      if (keys['ArrowUp']) {
-        player.y -= PADDLE_SPEED;
-      }
-      if (keys['ArrowDown']) {
-        player.y += PADDLE_SPEED;
-      }
-      // Clamp player paddle
-      if (player.y < 0) player.y = 0;
-      if (player.y + player.height > canvas.height) player.y = canvas.height - player.height;
+      // Keyboard paddle movement
+      if (keys['ArrowUp']) player.y -= PADDLE_SPEED;
+      if (keys['ArrowDown']) player.y += PADDLE_SPEED;
+      clampPlayer();
 
-      // Simple AI: move towards ball's y position
+      // Simple AI
       const targetY = ball.y - computer.height / 2;
-      if (computer.y < targetY) {
-        computer.y += Math.min(AI_SPEED, targetY - computer.y);
-      } else if (computer.y > targetY) {
-        computer.y -= Math.min(AI_SPEED, computer.y - targetY);
-      }
-      // Clamp computer paddle
+      if (computer.y < targetY) computer.y += Math.min(AI_SPEED, targetY - computer.y);
+      else if (computer.y > targetY) computer.y -= Math.min(AI_SPEED, computer.y - targetY);
       if (computer.y < 0) computer.y = 0;
       if (computer.y + computer.height > canvas.height) computer.y = canvas.height - computer.height;
 
-      // Update ball position
+      // Ball physics
       ball.x += ball.vx;
       ball.y += ball.vy;
 
-      // Collision with top/bottom walls
-      if (ball.y - ball.radius < 0 || ball.y + ball.radius > canvas.height) {
-        ball.vy = -ball.vy;
-      }
+      // Top/bottom walls
+      if (ball.y - ball.radius < 0 || ball.y + ball.radius > canvas.height) ball.vy = -ball.vy;
 
-      // Collision with player paddle
+      // Player paddle collision
       if (ball.x - ball.radius < player.x + player.width &&
-          ball.y > player.y &&
-          ball.y < player.y + player.height) {
+          ball.y > player.y && ball.y < player.y + player.height) {
         ball.vx = -ball.vx;
-        // Slightly adjust vertical speed based on where it hit the paddle
         const hitPos = (ball.y - player.y) / player.height - 0.5;
         ball.vy = BALL_SPEED * hitPos * 2;
-        ball.x = player.x + player.width + ball.radius; // prevent sticking
+        ball.x = player.x + player.width + ball.radius;
       }
 
-      // Collision with computer paddle
+      // Computer paddle collision
       if (ball.x + ball.radius > computer.x &&
-          ball.y > computer.y &&
-          ball.y < computer.y + computer.height) {
+          ball.y > computer.y && ball.y < computer.y + computer.height) {
         ball.vx = -ball.vx;
         const hitPos = (ball.y - computer.y) / computer.height - 0.5;
         ball.vy = BALL_SPEED * hitPos * 2;
-        ball.x = computer.x - ball.radius; // prevent sticking
+        ball.x = computer.x - ball.radius;
       }
 
       // Scoring
@@ -254,12 +262,11 @@
         setTimeout(clearMessage, 1500);
       }
 
-      // Draw paddles and ball
+      // Draw
       drawRect(player.x, player.y, player.width, player.height, '#fff');
       drawRect(computer.x, computer.y, computer.width, computer.height, '#fff');
       drawCircle(ball.x, ball.y, ball.radius, '#fff');
 
-      // Loop
       animationId = requestAnimationFrame(gameLoop);
     }
 
